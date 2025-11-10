@@ -7,19 +7,21 @@ function App() {
   const [surat, setSurat] = useState([
     {
       id: 1,
-      nomor: "001/SM/XI/2025",
-      jenis: "Surat Masuk",
-      pengirim: "Dinas Pendidikan Kota",
-      perihal: "Undangan Rapat Koordinasi",
-      tanggal: "2025-11-10",
+      nomor: "",
+      jenis: "",
+      pengirim: "",
+      perihal: "",
+      tanggal: "",
+      file: null,
     },
     {
       id: 2,
-      nomor: "002/SK/XI/2025",
-      jenis: "Surat Keluar",
-      pengirim: "Bagian Umum",
-      perihal: "Laporan Kegiatan Bulanan",
-      tanggal: "2025-11-09",
+      nomor: "",
+      jenis: "",
+      pengirim: "",
+      perihal: "",
+      tanggal: "",
+      file: null,
     },
   ]);
 
@@ -29,6 +31,7 @@ function App() {
     pengirim: "",
     perihal: "",
     tanggal: "",
+    file: null,
   });
 
   // Fungsi ekspor CSV
@@ -36,7 +39,15 @@ function App() {
     const esc = (v) => (v == null ? "" : String(v)).replace(/"/g, '""');
     const lines = [
       headers.join(","),
-      ...rows.map((r) => headers.map((h) => `"${esc(r[h])}"`).join(",")),
+      ...rows.map((r) =>
+        headers
+          .map((h) =>
+            h === "file"
+              ? `"${esc(r[h] ? r[h].name : "")}"`
+              : `"${esc(r[h])}"`
+          )
+          .join(",")
+      ),
     ];
     const csvContent = lines.join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
@@ -52,14 +63,23 @@ function App() {
 
   const handleAdd = (e) => {
     e.preventDefault();
-    if (!form.nomor || !form.pengirim || !form.perihal || !form.tanggal) {
-      alert("Mohon lengkapi semua field.");
+
+    if (
+      !form.nomor ||
+      !form.pengirim ||
+      !form.perihal ||
+      !form.tanggal ||
+      !form.file
+    ) {
+      alert("Mohon lengkapi semua field dan unggah file PDF.");
       return;
     }
+
     const newSurat = {
       id: surat.length + 1,
       ...form,
     };
+
     setSurat([...surat, newSurat]);
     setForm({
       nomor: "",
@@ -67,18 +87,41 @@ function App() {
       pengirim: "",
       perihal: "",
       tanggal: "",
+      file: null,
     });
+
+    // Reset input file
+    document.getElementById("fileInput").value = "";
   };
 
   const handleExport = () => {
-    const headers = ["id", "nomor", "jenis", "pengirim", "perihal", "tanggal"];
+    const headers = [
+      "id",
+      "nomor",
+      "jenis",
+      "pengirim",
+      "perihal",
+      "tanggal",
+      "file",
+    ];
     exportToCSV(headers, surat, "data_surat.csv");
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file && file.type !== "application/pdf") {
+      alert("Hanya file PDF yang diperbolehkan.");
+      e.target.value = "";
+      return;
+    }
+    setForm({ ...form, file });
   };
 
   return (
     <div style={{ padding: "2rem", fontFamily: "sans-serif" }}>
       <h1 style={{ marginBottom: "1rem" }}>📁 Administrasi Persuratan</h1>
 
+      {/* FORM INPUT SURAT */}
       <form
         onSubmit={handleAdd}
         style={{
@@ -86,7 +129,7 @@ function App() {
           gridTemplateColumns: "1fr 1fr",
           gap: "1rem",
           marginBottom: "2rem",
-          maxWidth: "700px",
+          maxWidth: "800px",
         }}
       >
         <input
@@ -123,20 +166,31 @@ function App() {
           onChange={(e) => setForm({ ...form, tanggal: e.target.value })}
           required
         />
+        <input
+          id="fileInput"
+          type="file"
+          accept="application/pdf"
+          onChange={handleFileChange}
+          required
+        />
+
         <button
           type="submit"
           style={{
+            gridColumn: "1 / span 2",
             background: "#4CAF50",
             color: "white",
             border: "none",
             borderRadius: "8px",
             cursor: "pointer",
+            padding: "10px",
           }}
         >
           Tambah Surat
         </button>
       </form>
 
+      {/* TABEL DATA SURAT */}
       <table
         border="1"
         cellPadding="8"
@@ -155,6 +209,7 @@ function App() {
             <th>Pengirim / Penerima</th>
             <th>Perihal</th>
             <th>Tanggal</th>
+            <th>File PDF</th>
           </tr>
         </thead>
         <tbody>
@@ -166,11 +221,25 @@ function App() {
               <td>{s.pengirim}</td>
               <td>{s.perihal}</td>
               <td>{s.tanggal}</td>
+              <td>
+                {s.file ? (
+                  <a
+                    href={URL.createObjectURL(s.file)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Lihat PDF
+                  </a>
+                ) : (
+                  "-"
+                )}
+              </td>
             </tr>
           ))}
         </tbody>
       </table>
 
+      {/* TOMBOL EKSPOR */}
       <button
         onClick={handleExport}
         style={{
